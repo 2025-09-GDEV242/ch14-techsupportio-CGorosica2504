@@ -135,18 +135,18 @@ public class Responder
         Charset charset = Charset.forName("US-ASCII");
         Path path = Paths.get(FILE_OF_DEFAULT_RESPONSES);
         
-        String currentResponse = "";
+        StringBuilder currentResponse = new StringBuilder();
         int blankLinesCount = 0;
         
         try (BufferedReader reader = Files.newBufferedReader(path, charset)) {
              
-            String line = reader.readLine();
+            String response = reader.readLine();
             
             //Reading the file line by line
-            while (line !=null) {
+            while (response !=null) {
                 
                 //Checking if the line is blank
-                if (line.trim().isEmpty()) {
+                if (response.trim().isEmpty()) {
                     blankLinesCount++;
                     
                     //Two consecutive blank lines indicate a formatting error.
@@ -157,9 +157,9 @@ public class Responder
                     }
                     
                     //End of a response. We store it and reset.
-                    if (!currentResponse.isEmpty()) {
-                        defaultResponses.add(currentResponse);
-                        currentResponse = "";
+                    if (currentResponse.length() > 0) {
+                        defaultResponses.add(currentResponse.toString());
+                        currentResponse.setLength(0);
                     }
                     
                 } else {
@@ -168,19 +168,19 @@ public class Responder
                     blankLinesCount = 0;
                     
                     //Build the current response. We concatenate lines with a space.
-                    if (currentResponse.isEmpty()) {
-                        currentResponse = line;
+                    if (currentResponse.length() == 0) {
+                        currentResponse.append(response);
                     } else {
-                        currentResponse = currentResponse + " " + line;
+                        currentResponse.append(" ").append(response);
                     }
                 }
                 
-                line = reader.readLine();
+                response = reader.readLine();
             }
             
             //Storing the last response if the file didn't end with a blank line.
-            if (!currentResponse.isEmpty()) {
-                defaultResponses.add(currentResponse);
+            if (currentResponse.length() > 0) {
+                defaultResponses.add(currentResponse.toString());
             }
             
         }   
