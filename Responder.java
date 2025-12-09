@@ -15,7 +15,8 @@ import java.util.*;
  * words is recognized, one of the default responses is randomly chosen.
  * 
  * @author David J. Barnes and Michael Kölling.
- * @version 2016.02.29
+ * @author Christian Gorosica
+ * @version 2025.12.08
  */
 public class Responder
 {
@@ -37,7 +38,7 @@ public class Responder
         fillResponseMap();
         fillDefaultResponses();
         randomGenerator = new Random();
-    }
+}
 
     /**
      * Generate a response from a given set of input words.
@@ -116,32 +117,98 @@ public class Responder
     }
 
     /**
-     * Build up a list of default responses from which we can pick
-     * if we don't know what else to say.
+     * Build up a list of default responses from which we can pick if we don't know what else to say.
+     * 
+     * Each non-empty sequence of lines is treated as one response, with lines concatenated using spaces.
+     * A singl blank line indicates the end of a response.
+     * 
+     * IF two or more consecutive blank lines are encountered, an ImproperResponseFormatExemption
+     * is raised. When this occurs, all loaded responses are cleared and a single fallback response
+     * is added.
+     * 
+     * If the file cannot be opened or read, warning messages are printed and any responses 
+     * successfully loaded prior to the failiure remain in place.
+     * 
+     * If no responses are available after processing, a final fallback response is inserted.
      */
-    private void fillDefaultResponses()
-    {
+    private void fillDefaultResponses() {
         Charset charset = Charset.forName("US-ASCII");
         Path path = Paths.get(FILE_OF_DEFAULT_RESPONSES);
+        
+        String currentResponse = "";
+        int blankLinesCount = 0;
+        
         try (BufferedReader reader = Files.newBufferedReader(path, charset)) {
-            String response = reader.readLine();
-            while(response != null) {
-                defaultResponses.add(response);
-                response = reader.readLine();
+             
+            String line = reader.readLine();
+            
+            //Reading the file line by line
+            while (line !=null) {
+                
+                //Checking if the line is blank
+                if (line.trim().isEmpty()) {
+                    blankLinesCount++;
+                    
+                    //Two consecutive blank lines indicate a formatting error.
+                    if (blankLinesCount >= 2) {
+                        throw new ImproperResponseFormatException(
+                            "Two or more consecutive blank lines detected"
+                            );
+                    }
+                    
+                    //End of a response. We store it and reset.
+                    if (!currentResponse.isEmpty()) {
+                        defaultResponses.add(currentResponse);
+                        currentResponse = "";
+                    }
+                    
+                } else {
+                    
+                    //Resets the blank lines counter on a non-blank input.
+                    blankLinesCount = 0;
+                    
+                    //Build the current response. We concatenate lines with a space.
+                    if (currentResponse.isEmpty()) {
+                        currentResponse = line;
+                    } else {
+                        currentResponse = currentResponse + " " + line;
+                    }
+                }
+                
+                line = reader.readLine();
+            }
+            
+            //Storing the last response if the file didn't end with a blank line.
+            if (!currentResponse.isEmpty()) {
+                defaultResponses.add(currentResponse);
+            }
+            
+        }   
+            catch (ImproperResponseFormatException e) {
+                
+                //Formatting error: Clears all responses and loads a fallback response.
+                System.err.println("[WARNING] IMPROPER FORMAT detected: " + e.getMessage() + " in " + FILE_OF_DEFAULT_RESPONSES);
+                System.err.println("[NOTICE] Default responses were cleared due to formatting error.\n");
+                defaultResponses.clear();
+            }
+            
+            catch (FileNotFoundException e) {
+                
+                //File does not exist or cannot be opened.
+                System.err.println("[WARNING] Unable to open " + FILE_OF_DEFAULT_RESPONSES);
+            }
+            
+            catch (IOException e) {
+                
+                //Geenral I/O failure.
+                System.err.println("[WARNING] A problem was encountered reading " + FILE_OF_DEFAULT_RESPONSES);
+            }
+            
+            //Makes sure we have at least one response.
+            if (defaultResponses.size() == 0) {
+                defaultResponses.add("Can you elaborate on that?");
             }
         }
-        catch(FileNotFoundException e) {
-            System.err.println("Unable to open " + FILE_OF_DEFAULT_RESPONSES);
-        }
-        catch(IOException e) {
-            System.err.println("A problem was encountered reading " +
-                               FILE_OF_DEFAULT_RESPONSES);
-        }
-        // Make sure we have at least one response.
-        if(defaultResponses.size() == 0) {
-            defaultResponses.add("Could you elaborate on that?");
-        }
-    }
 
     /**
      * Randomly select and return one of the default responses.
