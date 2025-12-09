@@ -1,6 +1,6 @@
 
 /**
- * This is an exception handling that indicates that a default response file is not formatted
+ * This is an exception handling that indicates that a response file is not formatted
  * correctly.
  *
  * @author Christian Gorosica
