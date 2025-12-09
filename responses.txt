@@ -3,10 +3,10 @@ Well, it never crashes on our system. It must have something to do with your sys
 
 slow
 I think this has to do with your hardware. Upgrading your processor should solve all performance problems. Have you got a problem with our software?
-        
+
 performance
 Performance was quite adequate in all our tests. Are you running any other processes in the background?
-        
+
 bug, buggy
 Well, you know, all software has some bugs. But our software engineers are working very hard to fix them. Can you describe the problem a bit further?
 
@@ -15,7 +15,7 @@ This is a known bug to do with the Windows operating system. Please report it to
 
 macintosh
 This is a known bug to do with the Mac operating system. Please report it to Apple. There is nothing we can do about this.
-        
+
 expensive
 The cost of our product is quite competitive. Have you looked around and really compared our features?
 
@@ -31,3 +31,14 @@ We take Linux support very seriously. But there are some problems. Most have to 
 bluej
 Ahhh, BlueJ, yes. We tried to buy out those guys long ago, but they simply won't sell... Stubborn people they are. Nothing we can do about it, I'm afraid.
 
+network, connectivity
+Our internal tests show flawless connectivity. If you're experiencing issues, it is likely a problem with your local network equipment.
+
+update, updates
+Updates are released only after rigorous verification. Surely you must've done something wrong on your end.
+
+error, errors
+Errors occur for many reasons, all of which have nothing to do with us or our software as we have a flawless error record. Consider external investigation.
+
+license
+The activation system is working as expected for everyone else. You didn't pirate our software, did you?

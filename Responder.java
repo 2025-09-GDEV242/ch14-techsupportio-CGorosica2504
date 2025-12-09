@@ -26,6 +26,9 @@ public class Responder
     private ArrayList<String> defaultResponses;
     // The name of the file containing the default responses.
     private static final String FILE_OF_DEFAULT_RESPONSES = "default.txt";
+    // The name of the file containing responses with their keys
+    private static final String FILE_OF_RESPONSES = "responses.txt";
+    
     private Random randomGenerator;
 
     /**
@@ -63,57 +66,125 @@ public class Responder
     }
 
     /**
-     * Enter all the known keywords and their associated responses
-     * into our response map.
+     * Populates the responseMap by reading structured key-response pairs from an external
+     * file. The file format is:
+     * 
+     * key1, key2, key3
+     * response line 1
+     * response line 2
+     * 
+     * keyA
+     * another response block
+     * 
+     * If two or more consecutive blank lines are encountered, an ImproperResponseFormatExemption
+     * is raised. When this occurs, all loaded responses are cleared.
+     * 
+     * If the file cannot be opened or read, warning messages are printed and any responses 
+     * successfully loaded prior to the failiure remain in place.
      */
-    private void fillResponseMap()
-    {
-        responseMap.put("crash", 
-                        "Well, it never crashes on our system. It must have something\n" +
-                        "to do with your system. Tell me more about your configuration.");
-        responseMap.put("crashes", 
-                        "Well, it never crashes on our system. It must have something\n" +
-                        "to do with your system. Tell me more about your configuration.");
-        responseMap.put("slow", 
-                        "I think this has to do with your hardware. Upgrading your processor\n" +
-                        "should solve all performance problems. Have you got a problem with\n" +
-                        "our software?");
-        responseMap.put("performance", 
-                        "Performance was quite adequate in all our tests. Are you running\n" +
-                        "any other processes in the background?");
-        responseMap.put("bug", 
-                        "Well, you know, all software has some bugs. But our software engineers\n" +
-                        "are working very hard to fix them. Can you describe the problem a bit\n" +
-                        "further?");
-        responseMap.put("buggy", 
-                        "Well, you know, all software has some bugs. But our software engineers\n" +
-                        "are working very hard to fix them. Can you describe the problem a bit\n" +
-                        "further?");
-        responseMap.put("windows", 
-                        "This is a known bug to do with the Windows operating system. Please\n" +
-                        "report it to Microsoft. There is nothing we can do about this.");
-        responseMap.put("macintosh", 
-                        "This is a known bug to do with the Mac operating system. Please\n" +
-                        "report it to Apple. There is nothing we can do about this.");
-        responseMap.put("expensive", 
-                        "The cost of our product is quite competitive. Have you looked around\n" +
-                        "and really compared our features?");
-        responseMap.put("installation", 
-                        "The installation is really quite straight forward. We have tons of\n" +
-                        "wizards that do all the work for you. Have you read the installation\n" +
-                        "instructions?");
-        responseMap.put("memory", 
-                        "If you read the system requirements carefully, you will see that the\n" +
-                        "specified memory requirements are 1.5 giga byte. You really should\n" +
-                        "upgrade your memory. Anything else you want to know?");
-        responseMap.put("linux", 
-                        "We take Linux support very seriously. But there are some problems.\n" +
-                        "Most have to do with incompatible glibc versions. Can you be a bit\n" +
-                        "more precise?");
-        responseMap.put("bluej", 
-                        "Ahhh, BlueJ, yes. We tried to buy out those guys long ago, but\n" +
-                        "they simply won't sell... Stubborn people they are. Nothing we can\n" +
-                        "do about it, I'm afraid.");
+    private void fillResponseMap() {
+        Charset charset = Charset.forName("US-ASCII");
+        Path path = Paths.get(FILE_OF_RESPONSES);
+        
+        //Clears existing entries so the map is always rebuilt from the file.
+        responseMap.clear();
+        
+        //Holds the keys for the current block
+        String[] responseKeys = null;
+        
+        
+        StringBuilder currentResponse = new StringBuilder();
+        int blankLinesCount = 0;
+        
+        try (BufferedReader reader = Files.newBufferedReader(path, charset)) {
+             
+            String line = reader.readLine();
+            
+            //Reading the file line by line
+            while (line !=null) {
+                
+                //Checking if the line is blank
+                if (line.trim().isEmpty()) {
+                    blankLinesCount++;
+                    
+                    //Two consecutive blank lines indicate a formatting error.
+                    if (blankLinesCount >= 2) {
+                        throw new ImproperResponseFormatException(
+                            "Two or more consecutive blank lines detected"
+                            );
+                    }
+                    
+                    //End of a key-response pair. 
+                    if (responseKeys != null && currentResponse.length() > 0) {
+                        
+                        String response = currentResponse.toString().trim();
+                        
+                        //Store the same response for each key in the block
+                        for (String key : responseKeys) {
+                            
+                            responseMap.put(key.trim(), response);
+                        }
+                        
+                        //Reset for the next block
+                        responseKeys = null;
+                        currentResponse.setLength(0);
+                    }
+                    
+                } else {
+                    
+                    //Resets the blank lines counter on a non-blank input.
+                    blankLinesCount = 0;
+                    
+                    //If keys have not been read yet, this line defines them
+                    if (responseKeys == null) {
+                        
+                        //Keys are comma separated
+                        responseKeys = line.split(",");
+                    } else {
+                        
+                        //This line belongs to the response text
+                        if (currentResponse.length() == 0) {
+                            
+                            currentResponse.append(line);
+                        } else {
+                            
+                            currentResponse.append(" ").append(line);
+                        }
+                    }
+                }
+                
+                line = reader.readLine();
+            }
+            
+            //Storing the last block if the file didn't end with a blank line.
+            if (responseKeys != null && currentResponse.length() > 0) {
+                String response = currentResponse.toString().trim();
+                
+                for (String key : responseKeys) {
+                    responseMap.put(key.trim(), response);
+                }
+            }
+            
+        }   
+            catch (ImproperResponseFormatException e) {
+                
+                //Formatting error: Clears all custom responses.
+                System.err.println("[WARNING] IMPROPER FORMAT detected: " + e.getMessage() + " in " + FILE_OF_RESPONSES);
+                System.err.println("[NOTICE] Custom responses that were read from " + FILE_OF_RESPONSES + " have been cleared due to formatting errors.\n");
+                responseMap.clear();
+            }
+            
+            catch (FileNotFoundException e) {
+                
+                //File does not exist or cannot be opened.
+                System.err.println("[WARNING] Unable to open " + FILE_OF_RESPONSES);
+            }
+            
+            catch (IOException e) {
+                
+                //Geenral I/O failure.
+                System.err.println("[WARNING] A problem was encountered reading " + FILE_OF_RESPONSES);
+            }
     }
 
     /**
@@ -188,7 +259,7 @@ public class Responder
                 
                 //Formatting error: Clears all responses and loads a fallback response.
                 System.err.println("[WARNING] IMPROPER FORMAT detected: " + e.getMessage() + " in " + FILE_OF_DEFAULT_RESPONSES);
-                System.err.println("[NOTICE] Default responses were cleared due to formatting error.\n");
+                System.err.println("[NOTICE] Default responses that were read from " + FILE_OF_DEFAULT_RESPONSES + " have been cleared due to formatting errors.\n");
                 defaultResponses.clear();
             }
             
